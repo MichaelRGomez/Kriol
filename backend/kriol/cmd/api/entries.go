@@ -1,3 +1,5 @@
+//Filename: kriol/backend/kriol/cmd/api/entries.go
+
 package main
 
 import (
@@ -10,6 +12,7 @@ func (app *application) createEntryHandler(w http.ResponseWriter, r *http.Reques
 }
 
 func (app *application) showEntryHandler(w http.ResponseWriter, r *http.Request) {
+	//getting request data from param function in helpers.go
 	id, err := app.readIDParam(r)
 	if err != nil {
 		http.NotFound(w, r)

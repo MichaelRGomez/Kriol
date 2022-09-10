@@ -1,35 +1,35 @@
-//filename: kriol/backend/kriol/cmd/api/main.go
+//Filename: kriol/backend/kriol/cmd/api/main.go
 
 package main
 
 import (
-	"flag"     //for logging
-	"fmt"      //for printing to webpage
-	"log"      //also for logging
-	"net/http" //for webserver
-	"os"       //also also for logging
-	"time"     //timing the log reports
+	"flag"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"time"
 )
 
-// The application version number
+// version number
 const version = "1.0.0"
 
-// The configuration settings
+// configuration settings
 type config struct {
 	port int
-	env  string //development, staging, production, etc
+	env  string //development, staging, production
 }
 
-// Dependency Injection
+// dependency injection
 type application struct {
 	config config
 	logger *log.Logger
 }
 
-// main
 func main() {
-	//configing config and environment status
 	var cfg config
+
+	//reading the flags
 	flag.IntVar(&cfg.port, "port", 4000, "API server port")
 	flag.StringVar(&cfg.env, "env", "development", "Environment (development | staging | production)")
 	flag.Parse()
@@ -37,30 +37,27 @@ func main() {
 	//creating logger
 	logger := log.New(os.Stdout, "", log.Ldate|log.Ltime)
 
-	//application struct
+	//instance of app struct
 	app := &application{
 		config: cfg,
 		logger: logger,
 	}
 
-	//creaing servr mux
+	//server mux
 	mux := http.NewServeMux()
-	mux.HandleFunc("/v1/healthcheck", app.healthcheckHandler)
-	mux.HandleFunc("/v1/createEntryHandler", app.createEntryHandler)
-	mux.HandleFunc("/v1/showEntryHandler", app.showEntryHandler)
+	mux.HandleFunc("v1/healthcheck", app.healthcheckHandler)
 
-	//creating HTTP server
+	//HTTP server
 	srv := &http.Server{
-		Addr: fmt.Sprintf(":%d", cfg.port),
-		//Handler: app.routes(),
+		Addr:         fmt.Sprintf(":%d", cfg.port),
+		Handler:      app.routes(),
 		IdleTimeout:  time.Minute,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 30 * time.Second,
 	}
 
-	//starting the server
-	logger.Printf("sarting %s server on %s", cfg.env, srv.Addr)
+	//starting our server
+	logger.Printf("starting %s server on %s", cfg.env, srv.Addr)
 	err := srv.ListenAndServe()
 	logger.Fatal(err)
-
 }
