@@ -43,10 +43,6 @@ func main() {
 		logger: logger,
 	}
 
-	//server mux
-	mux := http.NewServeMux()
-	mux.HandleFunc("v1/healthcheck", app.healthcheckHandler)
-
 	//HTTP server
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.port),
