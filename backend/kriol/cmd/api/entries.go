@@ -34,7 +34,7 @@ func (app *application) showEntryHandler(w http.ResponseWriter, r *http.Request)
 		Mode:      []string{"blended", "online"},
 		Version:   1,
 	}
-	err = app.writeJSON(w, http.StatusOK, school, nil)
+	err = app.writeJSON(w, http.StatusOK, envelope{"school": school}, nil)
 	if err != nil {
 		app.logger.Println(err)
 		http.Error(w, "The server encounterd a problem and could not process your request", http.StatusInternalServerError)
