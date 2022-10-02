@@ -3,6 +3,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -11,7 +12,27 @@ import (
 )
 
 func (app *application) createEntryHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintln(w, "create a new entry..")
+	//Our target decode desitnation
+	var input struct {
+		Name    string   `json:"name"`
+		Level   string   `json:"level"`
+		Contact string   `json:"contact"`
+		Phone   string   `json:"phone"`
+		Email   string   `json:"email"`
+		Website string   `json:"website"`
+		Address string   `json:"address"`
+		Mode    []string `json:"mode"`
+	}
+
+	//Initialize a new json.Decoder instance
+	err := json.NewDecoder(r.Body).Decode(&input)
+	if err != nil {
+		app.errorResponse(w, r, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	//Display the request
+	fmt.Fprintf(w, "%+v\n", input)
 }
 
 func (app *application) showEntryHandler(w http.ResponseWriter, r *http.Request) {
