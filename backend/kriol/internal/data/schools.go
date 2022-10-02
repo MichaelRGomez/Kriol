@@ -1,4 +1,4 @@
-//Filename: internal/data/school.so
+//Filename: internal/data/school.go
 
 package data
 
