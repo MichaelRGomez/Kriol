@@ -4,6 +4,7 @@ package data
 
 import (
 	"database/sql"
+	"errors"
 	"time"
 
 	"github.com/lib/pq"
@@ -74,7 +75,48 @@ func (m SchoolModel) Insert(school *School) error {
 
 // Get() allows us to retrieve a specific School
 func (m SchoolModel) Get(id int64) (*School, error) {
-	return nil, nil
+	//Ensure that there is a valid id
+	if id < 1 {
+		return nil, ErrRecordNotFound
+	}
+
+	//Contruct our query with the given id
+	query := `
+		SELECT id, created_at, name, level, contact, phone, email, website, address, mode, version
+		FROM schools
+		WHERE id = $1
+	`
+
+	//Declare a School variable to hold the returned data
+	var school School
+
+	// Execute the query using queryrow()
+	err := m.DB.QueryRow(query, id).Scan(
+		&school.ID,
+		&school.CreatedAt,
+		&school.Name,
+		&school.Level,
+		&school.Contact,
+		&school.Phone,
+		&school.Email,
+		&school.Website,
+		&school.Address,
+		pq.Array(&school.Mode),
+		&school.Version,
+	)
+	//Handle any errors
+	if err != nil {
+		//Check the type of error
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return nil, ErrRecordNotFound
+		default:
+			return nil, err
+		}
+	}
+	//Success
+	return &school, nil
+
 }
 
 // Update() allows us to edit/alter a specific school
