@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"time"
 
+	"github.com/lib/pq"
 	"kriol.michaelgomez.net/internal/validator"
 )
 
@@ -59,7 +60,16 @@ type SchoolModel struct {
 
 // Insert() allows us to create a new school
 func (m SchoolModel) Insert(school *School) error {
-	return nil
+	query := `
+		INSERT INTO schools (name, level, contact, phone, email, website, address, mode)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		RETURNING id, created_at, version
+	`
+	//Collect the data fields into a slice
+	args := []interface{}{school.Name, school.Level, school.Contact, school.Phone, school.Email, school.Website, school.Address, pq.Array(school.Mode)}
+
+	return m.DB.QueryRow(query, args...).Scan(&school.ID, &school.CreatedAt, &school.Version)
+
 }
 
 // Get() allows us to retrieve a specific School
