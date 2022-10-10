@@ -3,6 +3,7 @@
 package data
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"time"
@@ -66,10 +67,15 @@ func (m SchoolModel) Insert(school *School) error {
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		RETURNING id, created_at, version
 	`
+	//Create a context
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	//Cleanup to prevent memory leaks
+	defer cancel()
+
 	//Collect the data fields into a slice
 	args := []interface{}{school.Name, school.Level, school.Contact, school.Phone, school.Email, school.Website, school.Address, pq.Array(school.Mode)}
 
-	return m.DB.QueryRow(query, args...).Scan(&school.ID, &school.CreatedAt, &school.Version)
+	return m.DB.QueryRowContext(ctx, query, args...).Scan(&school.ID, &school.CreatedAt, &school.Version)
 
 }
 
@@ -90,8 +96,13 @@ func (m SchoolModel) Get(id int64) (*School, error) {
 	//Declare a School variable to hold the returned data
 	var school School
 
-	// Execute the query using queryrow()
-	err := m.DB.QueryRow(query, id).Scan(
+	//Create a context
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second) //The time starts when the ctx is created
+	//Cleanup to prevent memory leaks
+	defer cancel()
+
+	// Execute the query using queryrowcontext() to limit the query execution to 3 seconds
+	err := m.DB.QueryRowContext(ctx, query, id).Scan(
 		&school.ID,
 		&school.CreatedAt,
 		&school.Name,
@@ -132,8 +143,13 @@ func (m SchoolModel) Update(school *School) error {
 	`
 	args := []interface{}{school.Name, school.Level, school.Contact, school.Phone, school.Email, school.Website, school.Address, pq.Array(school.Mode), school.ID, school.Version}
 
+	//Create a context
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	//Cleanup to prevent memory leaks
+	defer cancel()
+
 	//Check for edit conflicts
-	err := m.DB.QueryRow(query, args...).Scan(&school.Version)
+	err := m.DB.QueryRowContext(ctx, query, args...).Scan(&school.Version)
 	if err != nil {
 		switch {
 		case errors.Is(err, sql.ErrNoRows):
@@ -158,8 +174,13 @@ func (m SchoolModel) Delete(id int64) error {
 		WHERE id = $1
 	`
 
+	//Create a context
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	//Cleanup to prevent memory leaks
+	defer cancel()
+
 	//Execute this query
-	result, err := m.DB.Exec(query, id)
+	result, err := m.DB.ExecContext(ctx, query, id)
 	if err != nil {
 		return err
 	}
