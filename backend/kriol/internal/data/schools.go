@@ -197,3 +197,61 @@ func (m SchoolModel) Delete(id int64) error {
 	}
 	return nil
 }
+
+// The GetAll() method returns a list of all the schools sorted by id
+func (m SchoolModel) GetAll(name string, level string, mode []string, filters Filters) ([]*School, error) {
+	//Construct the query
+	query := `
+		SELECT id,  created_at, name, level, contact, phone, email, website, address, mode, version
+		FROM schools
+		WHERE (LOWER(name) = LOWER($1) OR $1 = '')
+		AND (LOWER(level) = LOWER($2) OR $2 = '')
+		AND (mode @> $3 OR $3 = '{}')
+
+		ORDER BY id
+	`
+	//Create a 3 second time out context
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	//Execute the query
+	rows, err := m.DB.QueryContext(ctx, query, name, level, pq.Array(mode))
+	if err != nil {
+		return nil, err
+	}
+
+	//Close the result set
+	defer rows.Close()
+
+	//Initialize an empty slice to hold the school data
+	schools := []*School{}
+	//Iterate over the rows in the result set
+	for rows.Next() {
+		var school School
+		//Scan the values from the row into the school struct
+		err := rows.Scan(
+			&school.ID,
+			&school.CreatedAt,
+			&school.Name,
+			&school.Level,
+			&school.Contact,
+			&school.Phone,
+			&school.Email,
+			&school.Website,
+			&school.Address,
+			pq.Array(&school.Mode),
+			&school.Version,
+		)
+		if err != nil {
+			return nil, err
+		}
+		//Add the school to our slice
+		schools = append(schools, &school)
+	}
+	//Check for errors after looping through the resultset
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	//Return the slice of schools
+	return schools, nil
+}
