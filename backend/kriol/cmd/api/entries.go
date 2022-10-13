@@ -258,13 +258,13 @@ func (app *application) listSchoolsHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	//Get a listing of all schools
-	schools, err := app.models.Schools.GetAll(input.Name, input.Level, input.Mode, input.Filters)
+	schools, metadata, err := app.models.Schools.GetAll(input.Name, input.Level, input.Mode, input.Filters)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
 	}
 	//Send JSON responce containing all the schools
-	err = app.writeJSON(w, http.StatusOK, envelope{"schools": schools}, nil)
+	err = app.writeJSON(w, http.StatusOK, envelope{"schools": schools, "metadata": metadata}, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
