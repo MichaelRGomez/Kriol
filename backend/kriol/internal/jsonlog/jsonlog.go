@@ -3,6 +3,7 @@
 package jsonlog
 
 import (
+	"encoding/json"
 	"io"
 	"os"
 	"runtime/debug"
@@ -86,4 +87,21 @@ func (l *Logger) print(level Level, message string, properties map[string]string
 	if level >= LevelError {
 		data.Trace = string(debug.Stack())
 	}
+
+	//Encode the log entry to JSON
+	var line []byte
+	line, err := json.Marshal(data)
+	if err != nil {
+		line = []byte(LevelError.String() + ": unable to marshal log message" + err.Error())
+	}
+
+	//Prepare to write the log entry
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.out.Write(append(line, '\n'))
+}
+
+// Implement the io.Wrtie interface
+func (l *Logger) Write(message []byte) (n int, err error) {
+	return l.print(LevelError, string(message), nil)
 }
