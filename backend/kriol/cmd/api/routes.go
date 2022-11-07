@@ -8,7 +8,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
-func (app *application) routes() *httprouter.Router {
+func (app *application) routes() http.Handler {
 	// httprouter instance and paths for handler fucntions
 	router := httprouter.New()
 	router.NotFound = http.HandlerFunc(app.notFoundResponse)
@@ -19,5 +19,5 @@ func (app *application) routes() *httprouter.Router {
 	router.HandlerFunc(http.MethodGet, "/v1/entries/:id", app.showEntryHandler)
 	router.HandlerFunc(http.MethodPatch, "/v1/entries/:id", app.updateSchoolHandler)
 	router.HandlerFunc(http.MethodDelete, "/v1/entries/:id", app.deleteSchoolHandler)
-	return router
+	return app.recoverPanic(router)
 }
