@@ -3,10 +3,17 @@
 package data
 
 import (
+	"context"
+	"database/sql"
 	"errors"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
+	"kriol.michaelgomez.net/internal/validator"
+)
+
+var (
+	ErrDuplicateEmail = errors.New("duplicate email")
 )
 
 type User struct {
@@ -16,7 +23,7 @@ type User struct {
 	Email     string    `json:"email"`
 	Password  password  `json:"-"`
 	Activated bool      `json:"activated"`
-	version   int       `json:"-"`
+	Version   int       `json:"-"`
 }
 
 // Create a customer password type
@@ -50,4 +57,68 @@ func (p *password) Matches(plaintextPassword string) (bool, error) {
 		}
 	}
 	return true, nil
+}
+
+// Validate the client requst
+func ValidateEmail(v *validator.Validator, email string) {
+	v.Check(email != "", "email", "must be provided")
+	v.Check(validator.Matches(email, validator.EmailRX), "email", "must be a valid email address")
+}
+
+func ValidatePasswordPlaintex(v *validator.Validator, password string) {
+	v.Check(password != "", "password", "must be provided")
+	v.Check(len(password) >= 8, "password", "must be atleast 8 bytes long")
+	v.Check(len(password) <= 72, "password", "must not be more than 72 bytes long")
+}
+
+func ValidateUser(v *validator.Validator, user *User) {
+	v.Check(user.Name != "", "name", "must be provided")
+	v.Check(len(user.Name) <= 500, "name", "must not be more than 500 bytes long")
+	//validate the email
+	ValidateEmail(v, user.Email)
+
+	//validate the password
+	if user.Password.plaintext != nil {
+		ValidatePasswordPlaintex(v, *user.Password.plaintext)
+	}
+
+	//Ensure a hash of the password was created
+	if user.Password.hash == nil {
+		panic("missing password hash for the user")
+	}
+}
+
+// Create our user model
+type UserModel struct {
+	DB *sql.DB
+}
+
+// Create a new user
+func (m UserModel) Insert(user *User) error {
+	//Create our query
+	query := `
+		insert into users (name, email, password_hash, activated)
+		values ($1, $2, $3, $4)
+		returning id, created_at, version
+	`
+	args := []interface{}{
+		user.Name,
+		user.Email,
+		user.Password.hash,
+		user.Activated,
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	err := m.DB.QueryRowContext(ctx, query, args...).Scan(&user.ID, &user.CreatedAt, &user.Version)
+	if err != nil {
+		switch {
+		case err.Error() == `pq: duplicate key value violates unique constraint "users_email_key"`:
+			return ErrDuplicateEmail
+		default:
+			return err
+		}
+	}
+	return nil
 }
