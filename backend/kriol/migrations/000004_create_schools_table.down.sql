@@ -1,2 +1,2 @@
 -- Filename :migrations/000004_create_schools_table.down.sql
-drop table if exits schools;
+drop table if exists schools;
