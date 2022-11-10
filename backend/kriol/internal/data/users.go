@@ -122,3 +122,68 @@ func (m UserModel) Insert(user *User) error {
 	}
 	return nil
 }
+
+// Get user based on their email
+func (m UserModel) GetByEmail(email string) (*User, error) {
+	query := `
+		select id, created_at, name, email, password_hash, activated, version
+		from users
+		where email = $1
+	`
+
+	var user User
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	err := m.DB.QueryRowContext(ctx, query, email).Scan(
+		&user.ID,
+		&user.CreatedAt,
+		&user.Name,
+		&user.Email,
+		&user.Password.hash,
+		&user.Activated,
+		&user.Version,
+	)
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return nil, ErrRecordNotFound
+		default:
+			return nil, err
+		}
+	}
+
+	return &user, nil
+}
+
+// The client can update their information
+func (m UserModel) Update(user *User) error {
+	query := `
+		update users
+		set name = $1, email = $2, password_hash = $3, activated = $4, version + 1
+		where id = $5 and version = $6
+		returning version
+	`
+	args := []interface{}{
+		user.Name,
+		user.Email,
+		user.Password.hash,
+		user.Activated,
+		user.ID,
+		user.Version,
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	err := m.DB.QueryRowContext(ctx, query, args...).Scan(&user.Version)
+	if err != nil {
+		switch {
+		case err.Error() == `pq: duplicate key value violates unique constraint "users_email_key"`:
+			return ErrDuplicateEmail
+		default:
+			return err
+		}
+	}
+	return nil
+}
