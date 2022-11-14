@@ -12,6 +12,7 @@ import (
 	_ "github.com/lib/pq"
 	"kriol.michaelgomez.net/internal/data"
 	"kriol.michaelgomez.net/internal/jsonlog"
+	"kriol.michaelgomez.net/internal/mailer"
 )
 
 // version number
@@ -32,6 +33,13 @@ type config struct {
 		burst   int     //how many request an the inital moment
 		enabled bool    //rate limiting toggle
 	}
+	smtp struct {
+		host     string
+		port     int
+		username string //from mail trap
+		password string
+		sender   string
+	}
 }
 
 // dependency injection
@@ -39,6 +47,7 @@ type application struct {
 	config config
 	logger *jsonlog.Logger
 	models data.Models
+	mailer mailer.Mailer
 }
 
 func main() {
@@ -56,6 +65,13 @@ func main() {
 	flag.Float64Var(&cfg.limiter.rps, "limiter-rps", 2, "Rate limiter maximum request per second")
 	flag.IntVar(&cfg.limiter.burst, "limiter-burst", 4, "Rate limiter maximum burst")
 	flag.BoolVar(&cfg.limiter.enabled, "limiter-enabled", true, "Rate limiter enabledS")
+
+	//These are flags for the mailer
+	flag.StringVar(&cfg.smtp.host, "smtp-host", "smpt.mailtrap.io", "SMPT host")
+	flag.IntVar(&cfg.smtp.port, "smtp-port", 25, "SMTP port")
+	flag.StringVar(&cfg.smtp.username, "smtp-username", "5e54def69b9279", "SMPT username")
+	flag.StringVar(&cfg.smtp.password, "smtp-password", "1f4d65023b4d66", "SMPT password")
+	flag.StringVar(&cfg.smtp.sender, "smtp-sender", "Appletree <no-reply@appletree.sophia.net>", "SMPT sender")
 
 	flag.Parse()
 
@@ -76,6 +92,7 @@ func main() {
 		config: cfg,
 		logger: logger,
 		models: data.NewModels(db),
+		mailer: mailer.New(cfg.smtp.host, cfg.smtp.port, cfg.smtp.username, cfg.smtp.password, cfg.smtp.sender),
 	}
 	//Call app.server() to start the server
 	err = app.serve()

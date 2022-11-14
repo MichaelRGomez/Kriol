@@ -1,0 +1,36 @@
+{{/* Filename: kriol/backend/kriol/internal/mailer/templates/user_welcome.templ */}}
+{{ define "subject" }}Welcome to Appletree!{{ end }}
+{{ define "plainBody" }}
+Hi, 
+
+Thank you for signing up for an Appletree account!
+We are excited to have you on board! 
+For future reference, please note that your indentification number
+is {{ .ID }}.
+
+Thanks,
+
+The Appletree templates
+{{ end }}
+
+{{ define "htmlBody" }}
+<!doctype html>
+<html>
+    <head>
+        <meta name="viewport" content="width=device-width"/>
+        <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/>
+    </head>
+
+    <body>
+        <p>Hi,</p>
+
+        <p>Thank you for signing up for an Appletree account!</p>
+        <p>We are excited to have you on board!</p>
+        <p>For future reference, please note that your indentification number</p>
+        <p>is {{ .ID }}.</p>
+
+        <p>Thanks,</p>
+        <p>The Appletree Team</p>
+    </body>
+</html>
+{{ end }}
