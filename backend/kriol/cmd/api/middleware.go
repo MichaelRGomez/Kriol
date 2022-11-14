@@ -3,13 +3,17 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
 	"golang.org/x/time/rate"
+	"kriol.michaelgomez.net/internal/data"
+	"kriol.michaelgomez.net/internal/validator"
 )
 
 func (app *application) recoverPanic(next http.Handler) http.Handler {
@@ -79,6 +83,55 @@ func (app *application) rateLimit(next http.Handler) http.Handler {
 			}
 			mu.Unlock()
 		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// Authentication
+func (app *application) authenicate(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		//Add a "Vary: Authorization header to the reponse"
+		//A note to caches that no reponse may vary
+		w.Header().Add("Vary", "Authorization")
+		//Retrieve the value of the Authorization header form the request
+		authorizationHeader := r.Header.Get("Authorization")
+		//if no authorization found then we will created an anonymous user
+		if authorizationHeader == "" {
+			r = app.contextSetUser(r, data.AnonymousUser)
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		//Check if the provided authorization header is in the right format
+		headerParts := strings.Split(authorizationHeader, " ")
+		if len(headerParts) != 2 || headerParts[0] != "Bearer" {
+			app.invalidAuthenticationTokenReponse(w, r)
+			return
+		}
+		//Extract the token
+		token := headerParts[1]
+		//Validate the token
+		v := validator.New()
+		if data.ValidateTokenPlaintext(v, token); !v.Valid() {
+			app.invalidCredntialsResponse(w, r)
+			return
+		}
+
+		//Retrieve details about the user
+		user, err := app.models.Users.GetForToken(data.ScopeAuthentication, token)
+		if err != nil {
+			switch {
+			case errors.Is(err, data.ErrRecordNotFound):
+				app.invalidCredntialsResponse(w, r)
+			default:
+				app.serverErrorResponse(w, r, err)
+			}
+			return
+		}
+		//Add the user infromation to the request context
+		r = app.contextSetUser(r, user)
+
+		//Call the next handler
 		next.ServeHTTP(w, r)
 	})
 }
