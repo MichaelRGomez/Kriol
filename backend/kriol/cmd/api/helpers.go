@@ -151,7 +151,10 @@ func (app *application) readInt(qs url.Values, key string, defaultValue int, v *
 
 // background accepts a function as it's parameter
 func (app *application) background(fn func()) {
+	//increament the WaitGroup counter
+	app.wg.Add(1)
 	go func() {
+		defer app.wg.Done()
 		//recover from panics
 		defer func() {
 			if err := recover(); err != nil {
